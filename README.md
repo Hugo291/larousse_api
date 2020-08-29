@@ -1,6 +1,6 @@
 ## Larousse API
 
-This package is a upgrade of github project [larousse_api](https://github.com/quentin-dev/larousse_api)  
+This package is an upgrade of Github project [larousse_api](https://github.com/quentin-dev/larousse_api)  
 
 
 ### Usage
