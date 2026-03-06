@@ -20,7 +20,7 @@ if "bs4" not in sys.modules:
     fake_bs4.BeautifulSoup = _PlaceholderBeautifulSoup
     sys.modules["bs4"] = fake_bs4
 
-from larousse_api.larousse import Larousse
+from larousse_api.larousse import Larousse, LarousseError
 
 
 class FakeListNode:
@@ -94,7 +94,7 @@ def test_get_citations_returns_entries(mock_get_content):
 def test_get_content_raises_exception_when_status_code_is_not_200(mock_get):
     mock_get.return_value = Mock(status_code=500, text="Server error")
 
-    with pytest.raises(Exception, match="Status code return an error"):
+    with pytest.raises(LarousseError, match="Status code return an error"):
         Larousse("Fromage")
 
 
@@ -106,4 +106,7 @@ def test_request_url_uses_lowercase_word(mock_get, mock_beautiful_soup):
 
     Larousse("FrOmAgE")
 
-    mock_get.assert_called_once_with(url="https://www.larousse.fr/dictionnaires/francais/fromage")
+    mock_get.assert_called_once_with(
+        url="https://www.larousse.fr/dictionnaires/francais/fromage",
+        timeout=10,
+    )
