@@ -1,61 +1,54 @@
-import requests
+"""Larousse dictionary scraping client."""
+
 import re
 import unicodedata
+
+import requests
 from bs4 import BeautifulSoup
 
 
+class LarousseError(RuntimeError):
+    """Raised when Larousse content cannot be retrieved."""
+
+
 class Larousse:
+    """Simple client used to fetch and parse Larousse dictionary pages."""
 
     def __init__(self, word):
         self.word = word
         self.soup = self.__get_content()
 
     def get_definitions(self):
-        """
-        :return: A list containing all definitions of word
-        """
-
-        for ul in self.soup.find_all('ul'):
-            if ul.get('class') is not None and 'Definitions' in ul.get('class'):
-                return [unicodedata.normalize("NFKD", re.sub("<.*?>", "", str(li))) for li in
-                        ul.find_all('li')], ul.find_all('li')
-        return None, None
+        """Return normalized definitions and original `<li>` nodes."""
+        return self._extract_items("Definitions")
 
     def get_synonymes(self):
-        """
-            :return: A list containing all   synonymes of word
-            """
-
-        for ul in self.soup.find_all('ul'):
-            if ul.get('class') is not None and 'Synonymes' in ul.get('class'):
-                return [unicodedata.normalize("NFKD", re.sub("<.*?>", "", str(li))) for li in
-                        ul.find_all('li')], ul.find_all('li')
-        return None, None
+        """Return normalized synonymes and original `<li>` nodes."""
+        return self._extract_items("Synonymes")
 
     def get_citations(self):
-        """
-            :return: A list containing all citations of word
-            """
-
-        for ul in self.soup.find_all('ul'):
-            if ul.get('class') is not None and 'ListeCitations' in ul.get('class'):
-                return [unicodedata.normalize("NFKD", re.sub("<.*?>", "", str(li))) for li in
-                        ul.find_all('li')], ul.find_all('li')
-        return None, None
+        """Return normalized citations and original `<li>` nodes."""
+        return self._extract_items("ListeCitations")
 
     def get_locutions(self):
-        """
-            :return: A list containing all locutions of word
-            """
-        for ul in self.soup.find_all('ul'):
-            if ul.get('class') is not None and 'ListeCitations' in ul.get('class'):
-                return [unicodedata.normalize("NFKD", re.sub("<.*?>", "", str(li))) for li in
-                        ul.find_all('li')], ul.find_all('li')
+        """Return normalized locutions and original `<li>` nodes."""
+        return self._extract_items("ListeCitations")
+
+    def _extract_items(self, list_class):
+        for ul in self.soup.find_all("ul"):
+            classes = ul.get("class")
+            if classes is not None and list_class in classes:
+                items = ul.find_all("li")
+                normalized_items = [
+                    unicodedata.normalize("NFKD", re.sub("<.*?>", "", str(item)))
+                    for item in items
+                ]
+                return normalized_items, items
         return None, None
 
     def __get_content(self):
-        url = "https://www.larousse.fr/dictionnaires/francais/" + self.word.lower()
-        rq = requests.get(url=url)
-        if rq.status_code != 200:
-            raise Exception("Status code return an error")
-        return BeautifulSoup(rq.text, 'html.parser')
+        url = f"https://www.larousse.fr/dictionnaires/francais/{self.word.lower()}"
+        response = requests.get(url=url, timeout=10)
+        if response.status_code != 200:
+            raise LarousseError("Status code return an error")
+        return BeautifulSoup(response.text, "html.parser")

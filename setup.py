@@ -1,6 +1,8 @@
+"""Package setup configuration."""
+
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -13,13 +15,14 @@ setuptools.setup(
     url="https://github.com/hugo291/larousse_api",
     packages=setuptools.find_packages(),
     install_requires=[
-        "requests>=2.22.0",
-        "bs4>=0.0.1",
+        "requests>=2.32.3",
+        "beautifulsoup4>=4.13.4",
     ],
+    extras_require={"test": ["pytest>=8.3.4"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
+    python_requires=">=3.7",
 )
