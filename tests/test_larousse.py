@@ -1,112 +1,140 @@
-import sys
-import types
 from unittest.mock import Mock, patch
 
 import pytest
 
-# Provide lightweight fallback modules so imports succeed in restricted environments.
-if "requests" not in sys.modules:
-    fake_requests = types.ModuleType("requests")
-    fake_requests.get = lambda **kwargs: None
-    sys.modules["requests"] = fake_requests
-
-if "bs4" not in sys.modules:
-    fake_bs4 = types.ModuleType("bs4")
-
-    class _PlaceholderBeautifulSoup:
-        def __init__(self, *args, **kwargs):
-            pass
-
-    fake_bs4.BeautifulSoup = _PlaceholderBeautifulSoup
-    sys.modules["bs4"] = fake_bs4
-
 from larousse_api.larousse import Larousse, LarousseError
 
 
-class FakeListNode:
-    def __init__(self, text):
-        self.text = text
-
-    def __str__(self):
-        return f"<li>{self.text}</li>"
+def make_response(body, status_code=200):
+    return Mock(status_code=status_code, text=f"<html><body>{body}</body></html>")
 
 
-class FakeUl:
-    def __init__(self, classes, texts):
-        self._classes = classes
-        self._items = [FakeListNode(text) for text in texts]
-
-    def get(self, key):
-        if key == "class":
-            return self._classes
-        return None
-
-    def find_all(self, tag):
-        if tag == "li":
-            return self._items
-        return []
+def make_larousse(body):
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.return_value = make_response(body)
+        return Larousse("Fromage")
 
 
-class FakeSoup:
-    def __init__(self, uls):
-        self._uls = uls
+def test_get_definitions_returns_entries():
+    larousse = make_larousse(
+        '<ul class="Definitions">'
+        "<li>Aliment obtenu par <b>coagulation</b> du lait.</li>"
+        "<li>Définition secondaire.</li>"
+        "</ul>"
+    )
 
-    def find_all(self, tag):
-        if tag == "ul":
-            return self._uls
-        return []
-
-
-@patch.object(Larousse, "_Larousse__get_content")
-def test_get_definitions_returns_entries(mock_get_content):
-    mock_get_content.return_value = FakeSoup([FakeUl(["Definitions"], ["Définition 1", "Définition 2"])])
-
-    larousse = Larousse("Fromage")
     definitions, definition_nodes = larousse.get_definitions()
 
-    assert definitions == ["De\u0301finition 1", "De\u0301finition 2"]
+    assert definitions == [
+        "Aliment obtenu par coagulation du lait.",
+        "Définition secondaire.",
+    ]
     assert len(definition_nodes) == 2
 
 
-@patch.object(Larousse, "_Larousse__get_content")
-def test_get_synonymes_returns_entries(mock_get_content):
-    mock_get_content.return_value = FakeSoup([FakeUl(["Synonymes"], ["Synonyme A", "Synonyme B"])])
+def test_get_synonymes_returns_entries():
+    larousse = make_larousse(
+        '<ul class="Synonymes"><li>Synonyme A</li><li>Synonyme B</li></ul>'
+    )
 
-    larousse = Larousse("Fromage")
     synonymes, synonymes_nodes = larousse.get_synonymes()
 
     assert synonymes == ["Synonyme A", "Synonyme B"]
     assert len(synonymes_nodes) == 2
 
 
-@patch.object(Larousse, "_Larousse__get_content")
-def test_get_citations_returns_entries(mock_get_content):
-    mock_get_content.return_value = FakeSoup([FakeUl(["ListeCitations"], ["Citation 1", "Citation 2"])])
+def test_get_citations_returns_entries():
+    larousse = make_larousse(
+        '<ul class="ListeCitations"><li>Citation 1</li><li>Citation 2</li></ul>'
+    )
 
-    larousse = Larousse("Fromage")
     citations, citation_nodes = larousse.get_citations()
 
     assert citations == ["Citation 1", "Citation 2"]
     assert len(citation_nodes) == 2
 
 
-@patch("larousse_api.larousse.requests.get")
-def test_get_content_raises_exception_when_status_code_is_not_200(mock_get):
-    mock_get.return_value = Mock(status_code=500, text="Server error")
-
-    with pytest.raises(LarousseError, match="Status code return an error"):
-        Larousse("Fromage")
-
-
-@patch("larousse_api.larousse.BeautifulSoup")
-@patch("larousse_api.larousse.requests.get")
-def test_request_url_uses_lowercase_word(mock_get, mock_beautiful_soup):
-    mock_get.return_value = Mock(status_code=200, text="<html></html>")
-    mock_beautiful_soup.return_value = Mock()
-
-    Larousse("FrOmAgE")
-
-    mock_get.assert_called_once_with(
-        url="https://www.larousse.fr/dictionnaires/francais/fromage",
-        timeout=10,
+def test_get_locutions_uses_locutions_list_not_citations():
+    larousse = make_larousse(
+        '<ul class="ListeCitations"><li>Citation 1</li></ul>'
+        '<ul class="Locutions"><li>Locution 1</li><li>Locution 2</li></ul>'
     )
+
+    locutions, locution_nodes = larousse.get_locutions()
+
+    assert locutions == ["Locution 1", "Locution 2"]
+    assert len(locution_nodes) == 2
+
+
+def test_missing_section_returns_none():
+    larousse = make_larousse('<ul class="Definitions"><li>Seule section</li></ul>')
+
+    synonymes, synonymes_nodes = larousse.get_synonymes()
+
+    assert synonymes is None
+    assert synonymes_nodes is None
+
+
+def test_get_content_raises_exception_when_status_code_is_not_200():
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.return_value = make_response("Server error", status_code=500)
+
+        with pytest.raises(LarousseError, match="HTTP 500"):
+            Larousse("Fromage")
+
+
+def test_get_content_wraps_network_errors():
+    import requests
+
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.side_effect = requests.ConnectionError("boom")
+
+        with pytest.raises(LarousseError, match="failed"):
+            Larousse("Fromage")
+
+
+def test_request_url_uses_lowercase_word():
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.return_value = make_response("")
+
+        Larousse("FrOmAgE")
+
+        assert (
+            mock_get.call_args.kwargs["url"]
+            == "https://www.larousse.fr/dictionnaires/francais/fromage"
+        )
+        assert mock_get.call_args.kwargs["timeout"] == 10
+        assert "User-Agent" in mock_get.call_args.kwargs["headers"]
+
+
+def test_request_url_slugifies_multi_word_entries():
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.return_value = make_response("")
+
+        Larousse(" Pomme de terre ")
+
+        assert (
+            mock_get.call_args.kwargs["url"]
+            == "https://www.larousse.fr/dictionnaires/francais/pomme_de_terre"
+        )
+
+
+def test_request_url_quotes_accented_words():
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.return_value = make_response("")
+
+        Larousse("être")
+
+        assert (
+            mock_get.call_args.kwargs["url"]
+            == "https://www.larousse.fr/dictionnaires/francais/%C3%AAtre"
+        )
+
+
+def test_custom_timeout_is_forwarded():
+    with patch("larousse_api.larousse.requests.get") as mock_get:
+        mock_get.return_value = make_response("")
+
+        Larousse("Fromage", timeout=3)
+
+        assert mock_get.call_args.kwargs["timeout"] == 3

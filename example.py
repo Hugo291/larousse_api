@@ -1,16 +1,15 @@
-from larousse_api.larousse import Larousse
+from larousse_api import Larousse
 
-# init class larousse
-l = Larousse("Fromage")
+larousse = Larousse("Fromage")
 
-# Print the array containing all defintions of "Fromage"
-print(l.get_definitions())
+# Print the list containing all definitions of "Fromage"
+print(larousse.get_definitions())
 
-# Print the array containing all locution of "Fromage"
-print(l.get_locutions())
+# Print the list containing all locutions of "Fromage"
+print(larousse.get_locutions())
 
-# Print the array containing all synonymes of "Fromage"
-print(l.get_synonymes())
+# Print the list containing all synonymes of "Fromage"
+print(larousse.get_synonymes())
 
-# Print the array containing all citations of "Fromage"
-print(l.get_citations())
+# Print the list containing all citations of "Fromage"
+print(larousse.get_citations())
