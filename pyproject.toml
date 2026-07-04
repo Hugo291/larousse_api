@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "larousse-api"
+version = "0.1.0"
+description = "Unofficial scraper for the Larousse French dictionary (definitions, synonyms, citations, locutions)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Hugo Ferreira", email = "hugoferreirapro803@gmail.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests>=2.32.4",
+    "beautifulsoup4>=4.13.4",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.3.4"]
+
+[project.urls]
+Homepage = "https://github.com/hugo291/larousse_api"
+
+[tool.setuptools.packages.find]
+include = ["larousse_api*"]
