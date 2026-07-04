@@ -53,7 +53,9 @@ class Larousse:
             classes = unordered_list.get("class")
             if classes is not None and list_class in classes:
                 items = unordered_list.find_all("li")
-                normalized_items = [self._normalize_text(item) for item in items]
+                normalized_items = [
+                    self._normalize_text(item) for item in items
+                ]
                 return normalized_items, items
         return None, None
 

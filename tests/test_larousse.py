@@ -10,7 +10,8 @@ from larousse_api.larousse import Larousse, LarousseError
 
 def make_response(body, status_code=200):
     """Build a fake `requests` response wrapping `body` in an HTML page."""
-    return Mock(status_code=status_code, text=f"<html><body>{body}</body></html>")
+    html = f"<html><body>{body}</body></html>"
+    return Mock(status_code=status_code, text=html)
 
 
 def make_larousse(body):
@@ -53,7 +54,9 @@ def test_get_synonymes_returns_entries():
 def test_get_citations_returns_entries():
     """Citations are read from the `ListeCitations` list."""
     larousse = make_larousse(
-        '<ul class="ListeCitations"><li>Citation 1</li><li>Citation 2</li></ul>'
+        '<ul class="ListeCitations">'
+        "<li>Citation 1</li><li>Citation 2</li>"
+        "</ul>"
     )
 
     citations, citation_nodes = larousse.get_citations()
@@ -77,7 +80,9 @@ def test_get_locutions_uses_locutions_list_not_citations():
 
 def test_missing_section_returns_none():
     """A section absent from the page yields (None, None)."""
-    larousse = make_larousse('<ul class="Definitions"><li>Seule section</li></ul>')
+    larousse = make_larousse(
+        '<ul class="Definitions"><li>Seule section</li></ul>'
+    )
 
     synonymes, synonymes_nodes = larousse.get_synonymes()
 
