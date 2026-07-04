@@ -1,25 +1,31 @@
+"""Unit tests for the Larousse scraping client."""
+
 from unittest.mock import Mock, patch
 
 import pytest
+import requests
 
 from larousse_api.larousse import Larousse, LarousseError
 
 
 def make_response(body, status_code=200):
+    """Build a fake `requests` response wrapping `body` in an HTML page."""
     return Mock(status_code=status_code, text=f"<html><body>{body}</body></html>")
 
 
 def make_larousse(body):
+    """Build a Larousse instance whose page content is the given HTML body."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.return_value = make_response(body)
         return Larousse("Fromage")
 
 
 def test_get_definitions_returns_entries():
+    """Definitions are extracted, tag-stripped and whitespace-normalized."""
     larousse = make_larousse(
         '<ul class="Definitions">'
         "<li>Aliment obtenu par <b>coagulation</b> du lait.</li>"
-        "<li>Définition secondaire.</li>"
+        "<li>Définition secondaire.</li>"
         "</ul>"
     )
 
@@ -33,6 +39,7 @@ def test_get_definitions_returns_entries():
 
 
 def test_get_synonymes_returns_entries():
+    """Synonymes are read from the `Synonymes` list."""
     larousse = make_larousse(
         '<ul class="Synonymes"><li>Synonyme A</li><li>Synonyme B</li></ul>'
     )
@@ -44,6 +51,7 @@ def test_get_synonymes_returns_entries():
 
 
 def test_get_citations_returns_entries():
+    """Citations are read from the `ListeCitations` list."""
     larousse = make_larousse(
         '<ul class="ListeCitations"><li>Citation 1</li><li>Citation 2</li></ul>'
     )
@@ -55,6 +63,7 @@ def test_get_citations_returns_entries():
 
 
 def test_get_locutions_uses_locutions_list_not_citations():
+    """Locutions come from the `Locutions` list, not `ListeCitations`."""
     larousse = make_larousse(
         '<ul class="ListeCitations"><li>Citation 1</li></ul>'
         '<ul class="Locutions"><li>Locution 1</li><li>Locution 2</li></ul>'
@@ -67,6 +76,7 @@ def test_get_locutions_uses_locutions_list_not_citations():
 
 
 def test_missing_section_returns_none():
+    """A section absent from the page yields (None, None)."""
     larousse = make_larousse('<ul class="Definitions"><li>Seule section</li></ul>')
 
     synonymes, synonymes_nodes = larousse.get_synonymes()
@@ -76,6 +86,7 @@ def test_missing_section_returns_none():
 
 
 def test_get_content_raises_exception_when_status_code_is_not_200():
+    """A non-200 response raises LarousseError with the status code."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.return_value = make_response("Server error", status_code=500)
 
@@ -84,8 +95,7 @@ def test_get_content_raises_exception_when_status_code_is_not_200():
 
 
 def test_get_content_wraps_network_errors():
-    import requests
-
+    """Network errors are wrapped in LarousseError."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.side_effect = requests.ConnectionError("boom")
 
@@ -94,6 +104,7 @@ def test_get_content_wraps_network_errors():
 
 
 def test_request_url_uses_lowercase_word():
+    """The looked-up word is lowercased in the URL and headers are sent."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.return_value = make_response("")
 
@@ -108,6 +119,7 @@ def test_request_url_uses_lowercase_word():
 
 
 def test_request_url_slugifies_multi_word_entries():
+    """Multi-word entries are stripped and joined with underscores."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.return_value = make_response("")
 
@@ -120,6 +132,7 @@ def test_request_url_slugifies_multi_word_entries():
 
 
 def test_request_url_quotes_accented_words():
+    """Accented words are percent-encoded in the URL."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.return_value = make_response("")
 
@@ -132,6 +145,7 @@ def test_request_url_quotes_accented_words():
 
 
 def test_custom_timeout_is_forwarded():
+    """A custom timeout is forwarded to requests.get."""
     with patch("larousse_api.larousse.requests.get") as mock_get:
         mock_get.return_value = make_response("")
 

@@ -1,3 +1,5 @@
+"""Example usage of the Larousse client."""
+
 from larousse_api import Larousse
 
 larousse = Larousse("Fromage")
