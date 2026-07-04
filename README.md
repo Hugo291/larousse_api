@@ -45,7 +45,7 @@ Because the Larousse website doesn't supply an API to look up definitions :(
 
 ### How?
 
-* python3 (>= 3.9)
+* python3 (>= 3.10)
 * [requests](https://pypi.org/project/requests/)
 * [BeautifulSoup](https://pypi.org/project/beautifulsoup4/)
 

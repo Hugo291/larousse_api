@@ -7,7 +7,7 @@ name = "larousse-api"
 version = "0.1.0"
 description = "Unofficial scraper for the Larousse French dictionary (definitions, synonyms, citations, locutions)"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Hugo Ferreira", email = "hugoferreirapro803@gmail.com" },
